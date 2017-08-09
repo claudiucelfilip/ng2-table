@@ -8,7 +8,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
            role="grid" style="width: 100%;">
       <thead>
         <tr role="row">
-          <th *ngFor="let column of columns" [ngTableSorting]="config" [column]="column" 
+          <th *ngFor="let column of columns" [ngTableSorting]="config" [column]="column"
               (sortChanged)="onChangeTable($event)" ngClass="{{column.className || ''}}">
             {{column.title}}
             <i *ngIf="config && column.sort" class="pull-right fa"
@@ -17,7 +17,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
         </tr>
       </thead>
       <tbody>
-      <tr *ngIf="showFilterRow">
+      <tr *ngIf="showFilterRow" class="test">
         <td *ngFor="let column of columns">
           <input *ngIf="column.filtering" placeholder="{{column.filtering.placeholder}}"
                  [ngTableFiltering]="column.filtering"
