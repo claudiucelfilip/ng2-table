@@ -1,9 +1,9 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, TemplateRef } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
-  selector: 'ng-table',
-  template: `
+    selector: 'ng-table',
+    template: `
     <table class="table dataTable" ngClass="{{config.className || ''}}"
            role="grid" style="width: 100%;">
       <thead>
@@ -26,97 +26,101 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
                  (tableChanged)="onChangeTable(config)"/>
         </td>
       </tr>
-        <tr *ngFor="let row of rows">
-          <td (click)="cellClick(row, column.name)" *ngFor="let column of columns" [innerHtml]="sanitize(getData(row, column.name))"></td>
-        </tr>
+        <ng-template #defaultRowTpl let-cellClick="cellClick">
+            <tr *ngFor="let row of rows">
+                <td (click)="cellClick(row, column.name)" *ngFor="let column of columns" [innerHtml]="sanitize(getData(row, column.name))"></td>
+            </tr>
+        </ng-template>
+        <ng-container *ngTemplateOutlet="(rowTemplate ? rowTemplate : defaultRowTpl); context: ctx"></ng-container>
       </tbody>
     </table>
   `
 })
 export class NgTableComponent {
-  // Table values
-  @Input() public rows:Array<any> = [];
-
-  @Input()
-  public set config(conf:any) {
-    if (!conf.className) {
-      conf.className = 'table-striped table-bordered';
+    // Table values
+    @Input() public rows: Array<any> = [];
+    @Input() rowTemplate: TemplateRef<any>;
+    @Input()
+    public set config(conf: any) {
+        if (!conf.className) {
+            conf.className = 'table-striped table-bordered';
+        }
+        if (conf.className instanceof Array) {
+            conf.className = conf.className.join(' ');
+        }
+        this._config = conf;
     }
-    if (conf.className instanceof Array) {
-      conf.className = conf.className.join(' ');
+
+    // Outputs (Events)
+    @Output() public tableChanged: EventEmitter<any> = new EventEmitter();
+    @Output() public cellClicked: EventEmitter<any> = new EventEmitter();
+
+    public showFilterRow: Boolean = false;
+
+    @Input()
+    public set columns(values: Array<any>) {
+        values.forEach((value: any) => {
+            if (value.filtering) {
+                this.showFilterRow = true;
+            }
+            if (value.className && value.className instanceof Array) {
+                value.className = value.className.join(' ');
+            }
+            let column = this._columns.find((col: any) => col.name === value.name);
+            if (column) {
+                Object.assign(column, value);
+            }
+            if (!column) {
+                this._columns.push(value);
+            }
+        });
     }
-    this._config = conf;
-  }
 
-  // Outputs (Events)
-  @Output() public tableChanged:EventEmitter<any> = new EventEmitter();
-  @Output() public cellClicked:EventEmitter<any> = new EventEmitter();
+    private _columns: Array<any> = [];
+    private _config: any = {};
+    ctx: any;
+    public constructor(private sanitizer: DomSanitizer) {
+        this.ctx = this;
+    }
 
-  public showFilterRow:Boolean = false;
+    public sanitize = (html: string): SafeHtml => {
+        return this.sanitizer.bypassSecurityTrustHtml(html);
+    }
 
-  @Input()
-  public set columns(values:Array<any>) {
-    values.forEach((value:any) => {
-      if (value.filtering) {
-        this.showFilterRow = true;
-      }
-      if (value.className && value.className instanceof Array) {
-        value.className = value.className.join(' ');
-      }
-      let column = this._columns.find((col:any) => col.name === value.name);
-      if (column) {
-        Object.assign(column, value);
-      }
-      if (!column) {
-        this._columns.push(value);
-      }
-    });
-  }
+    public get columns(): Array<any> {
+        return this._columns;
+    }
 
-  private _columns:Array<any> = [];
-  private _config:any = {};
+    public get config(): any {
+        return this._config;
+    }
 
-  public constructor(private sanitizer:DomSanitizer) {
-  }
+    public get configColumns(): any {
+        let sortColumns: Array<any> = [];
 
-  public sanitize(html:string):SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(html);
-  }
+        this.columns.forEach((column: any) => {
+            if (column.sort) {
+                sortColumns.push(column);
+            }
+        });
 
-  public get columns():Array<any> {
-    return this._columns;
-  }
+        return { columns: sortColumns };
+    }
 
-  public get config():any {
-    return this._config;
-  }
+    public onChangeTable(column: any): void {
+        this._columns.forEach((col: any) => {
+            if (col.name !== column.name && col.sort !== false) {
+                col.sort = '';
+            }
+        });
+        this.tableChanged.emit({ sorting: this.configColumns });
+    }
 
-  public get configColumns():any {
-    let sortColumns:Array<any> = [];
+    public getData(row: any, propertyName: string): string {
+        return propertyName.split('.').reduce((prev: any, curr: string) => prev[curr], row);
+    }
 
-    this.columns.forEach((column:any) => {
-      if (column.sort) {
-        sortColumns.push(column);
-      }
-    });
-
-    return {columns: sortColumns};
-  }
-
-  public onChangeTable(column:any):void {
-    this._columns.forEach((col:any) => {
-      if (col.name !== column.name && col.sort !== false) {
-        col.sort = '';
-      }
-    });
-    this.tableChanged.emit({sorting: this.configColumns});
-  }
-
-  public getData(row:any, propertyName:string):string {
-    return propertyName.split('.').reduce((prev:any, curr:string) => prev[curr], row);
-  }
-
-  public cellClick(row:any, column:any):void {
-    this.cellClicked.emit({row, column});
-  }
+    public cellClick(row: any, column: any): void {
+        this.cellClicked.emit({ row, column });
+    }
 }
