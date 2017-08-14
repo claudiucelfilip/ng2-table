@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, TemplateRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, TemplateRef, AfterViewInit } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
@@ -7,14 +7,18 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
     <table class="table dataTable" ngClass="{{config.className || ''}}"
            role="grid" style="width: 100%;">
       <thead>
-        <tr role="row">
-          <th *ngFor="let column of columns" [ngTableSorting]="config" [column]="column"
-              (sortChanged)="onChangeTable($event)" ngClass="{{column.className || ''}}">
-            {{column.title}}
-            <i *ngIf="config && column.sort" class="pull-right fa"
-              [ngClass]="{'fa-chevron-down': column.sort === 'desc', 'fa-chevron-up': column.sort === 'asc'}"></i>
-          </th>
-        </tr>
+
+        <ng-template #defaultHeaderRowTpl>
+            <tr role="row">
+            <th *ngFor="let column of columns" [ngTableSorting]="config" [column]="column"
+                (sortChanged)="onChangeTable($event)" ngClass="{{column.className || ''}}">
+              {{column.title}}
+              <i *ngIf="config && column.sort" class="pull-right fa"
+                [ngClass]="{'fa-chevron-down': column.sort === 'desc', 'fa-chevron-up': column.sort === 'asc'}"></i>
+            </th>
+          </tr>
+        </ng-template>
+       <ng-container *ngTemplateOutlet="(headerRowTemplate ? headerRowTemplate : defaultHeaderRowTpl); context: ctx"></ng-container>
       </thead>
       <tbody>
       <tr *ngIf="showFilterRow" class="test">
@@ -26,7 +30,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
                  (tableChanged)="onChangeTable(config)"/>
         </td>
       </tr>
-        <ng-template #defaultRowTpl let-cellClick="cellClick">
+        <ng-template #defaultRowTpl>
             <tr *ngFor="let row of rows">
                 <td (click)="cellClick(row, column.name)" *ngFor="let column of columns" [innerHtml]="sanitize(getData(row, column.name))"></td>
             </tr>
@@ -36,10 +40,11 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
     </table>
   `
 })
-export class NgTableComponent {
+export class NgTableComponent implements AfterViewInit {
     // Table values
     @Input() public rows: Array<any> = [];
     @Input() rowTemplate: TemplateRef<any>;
+    @Input() headerRowTemplate: TemplateRef<any>;
     @Input()
     public set config(conf: any) {
         if (!conf.className) {
@@ -53,6 +58,7 @@ export class NgTableComponent {
 
     // Outputs (Events)
     @Output() public tableChanged: EventEmitter<any> = new EventEmitter();
+    @Output() public initTable: EventEmitter<any> = new EventEmitter();
     @Output() public cellClicked: EventEmitter<any> = new EventEmitter();
 
     public showFilterRow: Boolean = false;
@@ -95,6 +101,9 @@ export class NgTableComponent {
         return this._config;
     }
 
+    ngAfterViewInit() {
+      this.initTable.emit(true);
+    }
     public get configColumns(): any {
         let sortColumns: Array<any> = [];
 
