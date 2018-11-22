@@ -65,6 +65,7 @@ export class NgTableComponent implements AfterViewInit {
 
     @Input()
     public set columns(values: Array<any>) {
+        this._columns = [];
         values.forEach((value: any) => {
             if (value.filtering) {
                 this.showFilterRow = true;

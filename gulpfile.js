@@ -2,7 +2,7 @@
 
 const gulp = require('gulp');
 
-require('require-dir')('./gulp-tasks');
+require('./gulp-tasks/lint');
 
 gulp.task('default', () => {
   gulp.start('lint');
